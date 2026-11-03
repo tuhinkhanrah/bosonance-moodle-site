@@ -1,0 +1,301 @@
+/* ============================================================
+   1. FRONTPAGE LAYOUT & NAVBAR CLEARANCE (ZERO GAP)
+   ============================================================ */
+
+/* Reset top margins & padding across all main frontpage wrappers */
+body.path-site,
+body.path-site #page-wrapper,
+body.path-site #page-content,
+body.path-site #topofscroll.main-inner,
+body.path-site #region-main-box,
+body.path-site #region-main,
+body.path-site div[role="main"] {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+/* Hide empty frontpage header title ("Bosonance") and drawer toggles */
+body.path-site #page-header,
+body.path-site .drawer-toggles {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Precise spacing directly below the navbar line */
+body.path-site #themeboostunionslider-wrapper {
+    padding-top: 0.01rem !important; /* Fine-tune navbar-to-slider distance */
+    margin-top: 0 !important;
+}
+
+
+/* ============================================================
+   2. NAVIGATION BAR & DROPDOWN MENU STYLING
+   ============================================================ */
+
+/* Primary Navbar Links */
+.navbar-light .navbar-nav .nav-link {
+    color: #1e293b !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 0.375rem !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+/* Hover & Focus State for Navbar Items */
+.navbar-light .navbar-nav .nav-link:hover,
+.navbar-light .navbar-nav .nav-link:focus {
+    color: #0f172a !important;
+    background-color: #f1f5f9 !important;
+}
+
+/* Dropdown Menu Container */
+.navbar-nav .dropdown-menu {
+    border: none !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+    background-color: #ffffff !important;
+    padding: 0.5rem !important;
+}
+
+/* Dropdown Menu Items */
+.navbar-nav .dropdown-item {
+    font-weight: 500 !important;
+    color: #334155 !important;
+    padding: 0.6rem 1rem !important;
+    border-radius: 0.5rem !important;
+    transition: background-color 0.15s ease !important;
+}
+
+.navbar-nav .dropdown-item:hover {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+}
+
+
+/* ============================================================
+   3. BOOST UNION SLIDER (SMOOTH SLIDING & UNIFORM HEIGHT)
+   ============================================================ */
+
+/* Hide stretching tall background image element */
+body.path-site #themeboostunionslider .carousel-item > img {
+    display: none !important;
+}
+
+/* Flex alignment for uniform height across all slides */
+#themeboostunionslider .carousel-inner {
+    display: flex !important;
+    align-items: stretch !important;
+}
+
+/* Smooth horizontal slide animation */
+#themeboostunionslider .carousel-item {
+    height: 100% !important;
+    background-color: transparent !important;
+    padding: 0 !important;
+    transition: transform 0.6s ease-in-out !important;
+}
+
+/* Reposition carousel caption overlay flush to top */
+body.path-site #themeboostunionslider .carousel-caption {
+    position: relative !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    z-index: 10 !important;
+    pointer-events: none; /* Let clicks pass through empty spaces */
+}
+
+/* Re-enable clicks specifically for card content and buttons */
+body.path-site #themeboostunionslider .carousel-caption > div,
+body.path-site #themeboostunionslider .carousel-caption a,
+body.path-site #themeboostunionslider .carousel-caption button {
+    pointer-events: auto !important;
+}
+
+/* Lock card height to stop vertical jumping during transitions */
+#themeboostunionslider .carousel-caption > div {
+    width: 100% !important;
+    min-height: 420px !important; /* Compact height for clean top-level presentation */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    margin: 0 !important;
+}
+
+/* Limit slider prev/next controls to screen edges so they don't overlap buttons */
+body.path-site #themeboostunionslider .carousel-control-prev,
+body.path-site #themeboostunionslider .carousel-control-next {
+    width: 8% !important; /* Restricts click zone strictly to sides */
+    z-index: 5 !important;
+}
+
+
+/* ============================================================
+   4. RESPONSIVE BREAKPOINTS
+   ============================================================ */
+
+/* Mobile & Tablet Auto-Height Adjustment */
+@media (max-width: 991.98px) {
+    #themeboostunionslider .carousel-caption > div {
+        min-height: auto !important;
+    }
+}
+
+
+/* ============================================================
+   5. BORDERLESS & MODERN COURSE CARDS ENHANCEMENT
+   ============================================================ */
+
+/* Main Card Wrapper */
+body.path-site .course-card,
+body.path-site .card.course-card {
+    border: none !important;
+    border-radius: 1rem !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    overflow: hidden !important;
+}
+
+/* Elevate Card on Hover */
+body.path-site .course-card:hover,
+body.path-site .card.course-card:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Card Image Top Container */
+body.path-site .course-card .card-img-top {
+    border-top-left-radius: 1rem !important;
+    border-top-right-radius: 1rem !important;
+    height: 160px !important;
+    background-size: cover !important;
+    background-position: center !important;
+    transition: transform 0.3s ease !important;
+}
+
+body.path-site .course-card:hover .card-img-top {
+    transform: scale(1.02) !important;
+}
+
+/* Card Body & Title */
+body.path-site .course-card .card-body {
+    padding: 1.25rem 1.25rem 0.75rem 1.25rem !important;
+}
+
+body.path-site .course-card .coursename {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    line-height: 1.4 !important;
+    text-decoration: none !important;
+    transition: color 0.15s ease !important;
+}
+
+body.path-site .course-card:hover .coursename {
+    color: #2d5a50 !important;
+}
+
+/* Card Footer & Action Buttons */
+body.path-site .course-card .card-footer {
+    background-color: transparent !important;
+    border-top: 1px solid #f1f5f9 !important;
+    padding: 0.85rem 1.25rem !important;
+}
+
+body.path-site .course-card .gotobutton,
+body.path-site .course-card .btn-primary {
+    background-color: #2d5a50 !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    padding: 0.5rem 1rem !important;
+    transition: background-color 0.15s ease, transform 0.15s ease !important;
+}
+
+body.path-site .course-card .gotobutton:hover,
+body.path-site .course-card .btn-primary:hover {
+    background-color: #1e3a34 !important;
+    transform: translateY(-1px) !important;
+}
+
+body.path-site .course-card .popupbutton,
+body.path-site .course-card .btn-secondary {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    padding: 0.5rem 1rem !important;
+}
+
+body.path-site .course-card .popupbutton:hover,
+body.path-site .course-card .btn-secondary:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+
+/* ============================================================
+   6. BORDERLESS UI OVERRIDES (SOFT ELEVATION & SMOOTH CONTRAST)
+   ============================================================ */
+
+/* Universal Border Removal for Cards, Containers & Tiles */
+.card,
+.bosonance-card,
+.block,
+.p-3,
+.p-4,
+.feature-box,
+.bu-tile,
+.bu-slider,
+.border,
+.border-top,
+.border-bottom,
+.border-start,
+.border-end,
+.border-4 {
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important; /* Soft depth */
+}
+
+/* Soft Background Separation */
+.card-body,
+.p-3.bg-white,
+.p-4.bg-white {
+    background-color: #ffffff !important;
+}
+
+/* Borderless Navigation Bar & Dropdowns */
+.navbar,
+.navbar-light,
+.navbar-nav .dropdown-menu {
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Remove Input & Button Outlines */
+.btn,
+.badge {
+    border: none !important;
+}
+
+/* Clean List Items Separation */
+.list-group-item,
+ul.list-unstyled li {
+    border: none !important;
+    margin-bottom: 0.35rem;
+}

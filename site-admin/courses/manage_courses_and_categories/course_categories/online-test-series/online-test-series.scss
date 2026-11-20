@@ -1,0 +1,316 @@
+/* Bosonance Online Test Series Page Styles */
+.ots-wrapper {
+  font-family: inherit;
+  color: #0f172a;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 0 24px;
+  box-sizing: border-box;
+}
+
+.ots-wrapper *,
+.ots-wrapper *::before,
+.ots-wrapper *::after {
+  box-sizing: border-box;
+}
+
+/* Hero Section */
+.ots-hero {
+  background-color: #f8fafc;
+  background-image: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 36px 28px;
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.ots-eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0f172a;
+  background-color: #e2e8f0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+}
+
+.ots-hero-title {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.2;
+  font-weight: 800;
+  margin: 0 0 12px;
+  color: #0f172a;
+}
+
+.ots-hero-subtitle {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #475569;
+  max-width: 780px;
+  margin: 0 auto 22px;
+}
+
+.ots-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.ots-btn-primary {
+  display: inline-block;
+  background-color: #1d4ed8;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 11px 20px;
+  border-radius: 8px;
+}
+
+.ots-btn-primary:hover {
+  background-color: #1e40af;
+  color: #ffffff !important;
+}
+
+.ots-secondary-link {
+  font-size: 0.92rem;
+  color: #475569;
+}
+
+.ots-secondary-link a {
+  color: #0f766e;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* 4-Exam Grid */
+.ots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.ots-card {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.ots-card-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1d4ed8;
+  background-color: #dbeafe;
+  padding: 3px 9px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.ots-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: #0f172a;
+}
+
+.ots-card-subtitle {
+  font-size: 0.9rem;
+  color: #475569;
+  margin: 0 0 14px;
+}
+
+.ots-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+
+.ots-list li {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 7px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #0f172a;
+}
+
+.ots-list li::before {
+  content: "\2713";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+/* Collapsible Package Breakdown */
+.ots-details {
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+}
+
+.ots-details summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1d4ed8;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ots-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.ots-details summary::after {
+  content: "+";
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: 8px;
+}
+
+.ots-details[open] summary::after {
+  content: "\2212";
+}
+
+.ots-includes {
+  margin: 10px 0 2px;
+  padding: 10px 0 0;
+  border-top: 1px dashed #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ots-include-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.ots-include-name {
+  font-weight: 600;
+}
+
+.ots-include-tag {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f766e;
+  background-color: #ccfbf1;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.ots-card-cta {
+  display: inline-block;
+  text-align: center;
+  background-color: #1d4ed8;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 10px 16px;
+  border-radius: 8px;
+}
+
+.ots-card-cta:hover {
+  background-color: #1e40af;
+  color: #ffffff !important;
+}
+
+/* Sample Trial Funnel Banner */
+.ots-banner {
+  background-color: #0f172a;
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 28px 26px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.ots-banner-content {
+  max-width: 720px;
+}
+
+.ots-banner-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: #ffffff;
+}
+
+.ots-banner-text {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0;
+  color: #e2e8f0;
+}
+
+.ots-btn-sample {
+  display: inline-block;
+  background-color: #0f766e;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 12px 22px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.ots-btn-sample:hover {
+  background-color: #115e59;
+  color: #ffffff !important;
+}
+
+@media (max-width: 767px) {
+  .ots-hero {
+    padding: 24px 18px;
+  }
+
+  .ots-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .ots-card {
+    padding: 18px;
+  }
+
+  .ots-banner {
+    padding: 22px 18px;
+  }
+
+  .ots-btn-sample {
+    width: 100%;
+    text-align: center;
+  }
+}

@@ -1,0 +1,29 @@
+@media (max-width: 767px) {
+  .bosonance-hero {
+    padding: 24px 18px;
+  }
+
+  .bosonance-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .bosonance-wrapper .bosonance-card {
+    padding: 18px;
+  }
+
+  .bosonance-banner {
+    padding: 22px 18px;
+  }
+
+  .bosonance-banner-cta {
+    width: 100%;
+  }
+}
+
+@media (max-width: 359px) {
+  .bosonance-course-module-grid,
+  .bosonance-course-subject-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

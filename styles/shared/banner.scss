@@ -1,0 +1,36 @@
+.bosonance-banner {
+  background: var(--bosonance-banner);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 28px 26px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.bosonance-banner-content {
+  max-width: 720px;
+}
+
+.bosonance-banner-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: #ffffff;
+}
+
+.bosonance-banner-text {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0;
+  color: #e2e8f0;
+}
+
+.bosonance-banner-cta {
+  font-size: 0.95rem;
+  padding: 12px 22px;
+  border: 1px solid #ffffff;
+}
+

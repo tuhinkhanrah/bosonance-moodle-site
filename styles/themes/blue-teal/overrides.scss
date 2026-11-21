@@ -1,0 +1,14 @@
+.bosonance-fragment .bosonance-btn-primary {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.bosonance-fragment .bosonance-banner-cta {
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .bosonance-fragment .bosonance-banner-cta {
+    white-space: normal;
+  }
+}

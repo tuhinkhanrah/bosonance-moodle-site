@@ -1,0 +1,68 @@
+.bosonance-btn-primary,
+.bosonance-card-cta,
+.bosonance-banner-cta {
+  display: inline-block;
+  text-align: center;
+  background: var(--bosonance-primary);
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 11px 20px;
+}
+
+.bosonance-btn-primary:hover,
+.bosonance-card-cta:hover,
+.bosonance-banner-cta:hover {
+  background: var(--bosonance-primary-hover);
+  color: #ffffff !important;
+}
+
+.bosonance-btn-primary:focus-visible,
+.bosonance-card-cta:focus-visible,
+.bosonance-banner-cta:focus-visible {
+  outline: 3px solid #d97706;
+  outline-offset: 3px;
+}
+
+.bosonance-secondary-link {
+  font-size: 0.92rem;
+  color: var(--bosonance-muted);
+}
+
+.bosonance-secondary-link a {
+  display: inline-block;
+  background-color: var(--bosonance-surface);
+  border: 1px solid var(--bosonance-primary);
+  border-radius: 8px;
+  color: var(--bosonance-primary);
+  font-weight: 600;
+  padding: 8px 12px;
+  text-decoration: none;
+}
+
+.bosonance-secondary-link a:hover {
+  background-color: var(--bosonance-surface-muted);
+  color: var(--bosonance-primary-hover);
+}
+
+.bosonance-secondary-link a:focus-visible {
+  outline: 3px solid #d97706;
+  outline-offset: 3px;
+}
+
+.btn-primary {
+  --bs-btn-color: #ffffff;
+  --bs-btn-bg: var(--bosonance-primary);
+  --bs-btn-border-color: var(--bosonance-primary);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: var(--bosonance-primary-hover);
+  --bs-btn-hover-border-color: var(--bosonance-primary-hover);
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: var(--bosonance-primary-hover);
+  --bs-btn-active-border-color: var(--bosonance-primary-hover);
+  --bs-btn-disabled-color: #ffffff;
+  --bs-btn-disabled-bg: var(--bosonance-primary);
+  --bs-btn-disabled-border-color: var(--bosonance-primary);
+}
+

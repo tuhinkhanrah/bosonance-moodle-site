@@ -1,0 +1,15 @@
+.bosonance-wrapper {
+  color: var(--bosonance-text);
+  font-family: inherit;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 0 24px;
+  box-sizing: border-box;
+}
+
+.bosonance-wrapper *,
+.bosonance-wrapper *::before,
+.bosonance-wrapper *::after {
+  box-sizing: border-box;
+}
+

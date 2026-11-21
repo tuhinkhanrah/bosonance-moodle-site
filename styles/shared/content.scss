@@ -1,0 +1,295 @@
+.bosonance-slide {
+  background: var(--bosonance-slide-background);
+}
+
+.bosonance-slide-accent {
+  color: var(--bosonance-primary);
+}
+
+.bosonance-slide-heading,
+.bosonance-category-feature-title {
+  color: var(--bosonance-text);
+}
+
+.bosonance-slide-text {
+  color: #1e293b;
+}
+
+.bosonance-fragment .bosonance-action {
+  background-color: var(--bosonance-primary);
+}
+
+.bosonance-fragment .bosonance-action:hover {
+  background-color: var(--bosonance-primary-hover);
+}
+
+.bosonance-fragment .bosonance-action:focus-visible {
+  outline: 3px solid #d97706;
+  outline-offset: 3px;
+}
+
+.bosonance-dark-hero,
+.bosonance-course-hero {
+  background: var(--bosonance-course-hero);
+}
+
+.bosonance-dark-hero-text {
+  color: #e2e8f0;
+}
+
+.bosonance-dark-hero-badge {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.bosonance-course-section,
+.bosonance-course-section-bengali,
+.bosonance-course-section-devanagari {
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1f2937;
+  line-height: 1.6;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 16px;
+  background-color: var(--bosonance-surface-muted);
+  border-radius: 12px;
+}
+
+.bosonance-course-section-bengali {
+  font-family: 'Noto Sans Bengali', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.bosonance-course-section-devanagari {
+  font-family: 'Noto Sans Devanagari', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.bosonance-footer a {
+  color: var(--bosonance-primary);
+}
+
+.bosonance-footer a:hover {
+  color: var(--bosonance-primary-hover);
+  text-decoration: underline;
+}
+
+.bosonance-fragment .bosonance-link {
+  color: var(--bosonance-primary);
+}
+
+.bosonance-fragment .bosonance-link:hover {
+  color: var(--bosonance-primary-hover);
+  text-decoration: underline;
+}
+
+.bosonance-fragment .bosonance-link:focus-visible {
+  outline: 3px solid #d97706;
+  outline-offset: 3px;
+}
+
+.bosonance-footer-copyright {
+  color: var(--bosonance-muted);
+}
+
+.bosonance-course-hero {
+  color: #ffffff;
+  padding: 36px 28px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.bosonance-course-hero-badge,
+.bosonance-course-hero-badge-uppercase {
+  display: inline-block;
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.bosonance-course-hero-badge-uppercase {
+  text-transform: uppercase;
+}
+
+.bosonance-course-panel {
+  background: var(--bosonance-surface);
+  padding: 24px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+}
+
+.bosonance-course-module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.bosonance-course-subject-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.bosonance-course-module-icon {
+  font-size: 1.4rem;
+  margin-right: 10px;
+}
+
+.bosonance-course-module-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.bosonance-course-subject-description {
+  font-size: 0.9rem;
+  color: #4b5563;
+  margin-bottom: 0;
+}
+
+.bosonance-category-card {
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--bosonance-surface-muted);
+}
+
+.bosonance-fragment .bosonance-category-body {
+  background-color: var(--bosonance-surface-muted) !important;
+}
+
+.bosonance-course-hero-title {
+  margin: 0 0 10px;
+  font-size: 1.9rem;
+  font-weight: 700;
+}
+
+.bosonance-course-hero-intro {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+  opacity: 0.95;
+  max-width: 800px;
+}
+
+.bosonance-course-notice {
+  display: inline-block;
+  background: rgba(15, 23, 42, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.bosonance-course-section-title {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  color: #111827;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 10px;
+}
+
+.bosonance-module-tutorial,
+.bosonance-module-practice,
+.bosonance-module-exemplar,
+.bosonance-module-past-papers,
+.bosonance-module-mocks {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 8px;
+}
+
+.bosonance-module-tutorial {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.bosonance-module-practice {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.bosonance-module-exemplar {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.bosonance-module-past-papers {
+  background: #faf5ff;
+  border: 1px solid #e9d5ff;
+  color: #6b21a8;
+}
+
+.bosonance-module-mocks {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.bosonance-caption-tutorial,
+.bosonance-caption-practice,
+.bosonance-caption-exemplar,
+.bosonance-caption-past-papers,
+.bosonance-caption-mocks {
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.bosonance-caption-tutorial { color: #1d4ed8; }
+.bosonance-caption-practice { color: #047857; }
+.bosonance-caption-exemplar { color: #b45309; }
+.bosonance-caption-past-papers { color: #7e22ce; }
+.bosonance-caption-mocks { color: #b91c1c; }
+
+.bosonance-subject-blue,
+.bosonance-subject-green,
+.bosonance-subject-amber {
+  background: var(--bosonance-surface);
+  padding: 20px;
+  border-radius: 10px;
+  border-top: 4px solid;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.bosonance-subject-blue { border-top-color: #2563eb; }
+.bosonance-subject-green { border-top-color: #059669; }
+.bosonance-subject-amber { border-top-color: #d97706; }
+
+.bosonance-subject-title-blue,
+.bosonance-subject-title-green,
+.bosonance-subject-title-amber {
+  margin-top: 0;
+  font-size: 1.15rem;
+}
+
+.bosonance-subject-title-blue { color: #1e3a8a; }
+.bosonance-subject-title-green { color: #065f46; }
+.bosonance-subject-title-amber { color: #92400e; }
+
+.bosonance-highlight {
+  background-color: #92400e;
+  color: #ffffff;
+}
+
+body.path-site .course-card .gotobutton,
+body.path-site .course-card .btn-primary {
+  background-color: var(--bosonance-primary) !important;
+}
+
+body.path-site .course-card .gotobutton:hover,
+body.path-site .course-card .btn-primary:hover {
+  background-color: var(--bosonance-primary-hover) !important;
+}
+
+body.path-site .course-card:hover .coursename {
+  color: var(--bosonance-primary) !important;
+}
+

@@ -1,0 +1,126 @@
+.bosonance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.bosonance-wrapper .bosonance-card {
+  background: var(--bosonance-surface);
+  border: 1px solid var(--bosonance-border) !important;
+  border-radius: 12px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+
+.bosonance-card-badge {
+  font-size: 11px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.bosonance-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--bosonance-text);
+}
+
+.bosonance-card-subtitle {
+  font-size: 0.9rem;
+  color: var(--bosonance-muted);
+  margin: 0 0 14px;
+}
+
+.bosonance-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+
+.bosonance-list li {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 7px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--bosonance-text);
+}
+
+.bosonance-list li::before {
+  content: "\2713";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--bosonance-primary);
+  font-weight: 700;
+}
+
+.bosonance-details {
+  background: var(--bosonance-surface-muted);
+  border: 1px solid var(--bosonance-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+}
+
+.bosonance-details summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--bosonance-primary);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bosonance-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.bosonance-details summary::after {
+  content: "+";
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.bosonance-details[open] summary::after {
+  content: "\2212";
+}
+
+.bosonance-includes {
+  margin: 10px 0 2px;
+  padding: 10px 0 0;
+  border-top: 1px dashed var(--bosonance-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bosonance-include-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--bosonance-text);
+}
+
+.bosonance-include-name {
+  font-weight: 600;
+}
+
+.bosonance-include-tag {
+  font-size: 0.78rem;
+}
+
+.bosonance-card-cta {
+  font-size: 0.92rem;
+  padding: 10px 16px;
+}
+

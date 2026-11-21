@@ -1,0 +1,53 @@
+.bosonance-hero {
+  background: var(--bosonance-hero-background);
+  border: 1px solid var(--bosonance-border);
+  border-radius: 16px;
+  padding: 36px 28px;
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.bosonance-eyebrow,
+.bosonance-card-badge,
+.bosonance-include-tag {
+  display: inline-block;
+  color: var(--bosonance-badge-text);
+  background: var(--bosonance-badge-background);
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 3px 9px;
+}
+
+.bosonance-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+}
+
+.bosonance-hero-title {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.2;
+  font-weight: 800;
+  margin: 0 0 12px;
+  color: var(--bosonance-text);
+}
+
+.bosonance-hero-subtitle {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--bosonance-muted);
+  max-width: 780px;
+  margin: 0 auto 22px;
+}
+
+.bosonance-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+

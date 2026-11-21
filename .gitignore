@@ -1,1 +1,5 @@
 /build/moodle-raw.scss
+/build/moodle-raw-free-sample.scss
+/build/styles/
+__pycache__/
+moodle-map.json

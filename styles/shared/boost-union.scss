@@ -182,6 +182,27 @@ body.path-site #themeboostunionslider .carousel-control-next:hover {
     background-color: #312e81;
 }
 
+@media (hover: hover) and (pointer: fine) {
+    body.path-site #themeboostunionslider .carousel-control-prev,
+    body.path-site #themeboostunionslider .carousel-control-next {
+        opacity: 0;
+    }
+
+    body.path-site #themeboostunionslider:hover .carousel-control-prev,
+    body.path-site #themeboostunionslider:hover .carousel-control-next,
+    body.path-site #themeboostunionslider:focus-within .carousel-control-prev,
+    body.path-site #themeboostunionslider:focus-within .carousel-control-next {
+        opacity: 1;
+    }
+}
+
+@media (any-pointer: coarse) {
+    body.path-site #themeboostunionslider .carousel-control-prev,
+    body.path-site #themeboostunionslider .carousel-control-next {
+        opacity: 1;
+    }
+}
+
 body.path-site #themeboostunionslider .carousel-control-prev-icon,
 body.path-site #themeboostunionslider .carousel-control-next-icon {
     filter: none;
@@ -190,12 +211,23 @@ body.path-site #themeboostunionslider .carousel-control-next-icon {
 body.path-site #themeboostunionslider .carousel-indicators {
     z-index: 15;
     bottom: 0;
+    margin-left: 0;
+    margin-right: 0;
     margin-bottom: 0;
 }
 
 body.path-site #themeboostunionslider .carousel-indicators [data-bs-target] {
-    background-color: #475569;
-    opacity: 0.6;
+    box-sizing: border-box;
+    flex: 0 1 44px;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 18px;
+    border: 0;
+    border-radius: 50%;
+    background-clip: content-box;
+    background-color: rgba(0, 0, 0, 0.18);
+    opacity: 1;
 }
 
 body.path-site #themeboostunionslider .carousel-indicators .active {

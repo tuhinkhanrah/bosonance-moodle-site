@@ -16,18 +16,46 @@ class FragmentParser(HTMLParser):
         super().__init__()
         self.root_classes = None
         self.classes = set()
+        self.home_cards = []
+        self.links = []
 
     def handle_starttag(self, tag, attrs):
-        classes = set((dict(attrs).get("class") or "").split())
+        attributes = dict(attrs)
+        classes = set((attributes.get("class") or "").split())
         if self.root_classes is None:
             self.root_classes = classes
         self.classes.update(classes)
+        if "bosonance-home-card" in classes:
+            self.home_cards.append(attributes)
+        if tag == "a":
+            self.links.append(attributes.get("href"))
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
 
 
 class BrandingFragmentTests(unittest.TestCase):
+    def test_homepage_cards_and_exam_links(self):
+        home = ROOT / "blocks" / "home"
+        for filename, count in (
+            ("exam-features.html", 4),
+            ("target-exams.html", 4),
+            ("bosonance-advantage.html", 6),
+        ):
+            with self.subTest(filename=filename):
+                parser = FragmentParser()
+                parser.feed((home / filename).read_text(encoding="utf-8-sig"))
+                self.assertEqual(len(parser.home_cards), count)
+                if filename == "exam-features.html":
+                    for card in parser.home_cards:
+                        self.assertIn("bosonance-home-card-accent", card["class"].split())
+                        self.assertIn("--home-card-accent:", card.get("style", ""))
+                if filename == "target-exams.html":
+                    self.assertEqual(
+                        parser.links,
+                        [f"/course/index.php?categoryid={number}" for number in (1, 2, 3, 4)],
+                    )
+
     def test_all_themes_define_every_shared_brand_variable(self):
         css = "\n".join(path.read_text(encoding="utf-8") for path in SHARED.glob("*.scss"))
         used = set(re.findall(r"var\((--bosonance-[\w-]+)", css))

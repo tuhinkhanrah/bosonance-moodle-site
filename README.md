@@ -30,6 +30,12 @@ while other Moodle controls retain their own styles. Button styles apply
 site-wide, not only to Free Sample Pack pages. Blue-teal's upgrade-button text
 wraps on small screens.
 
+On the homepage slider, arrows appear on hover or keyboard focus when a mouse
+is available, and remain visible on touch-capable devices. The small round
+slide indicators retain a larger clickable area; only the active dot is colored.
+Homepage feature, exam and advantage cards share a theme-colored border.
+Update their HTML blocks in Moodle as well as the Raw SCSS when deploying them.
+
 The previous `build/moodle-raw.scss` and `build/moodle-raw-free-sample.scss`
 files, if present, are retained for comparison or rollback but are no longer
 regenerated and will become stale. Use the new bundles for future changes.

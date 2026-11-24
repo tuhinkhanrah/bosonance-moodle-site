@@ -14,6 +14,9 @@ class NamingTests(unittest.TestCase):
     def test_source_names_use_hyphens(self):
         for directory, dirs, files in os.walk(ROOT):
             dirs[:] = [name for name in dirs if name not in {".git", "__pycache__", "build"}]
+            if Path(directory) == ROOT:
+                # Moodle plugins must follow Moodle's own component and test file names.
+                dirs[:] = [name for name in dirs if name != "moodle-plugins"]
             for name in dirs + files:
                 with self.subTest(path=Path(directory, name).relative_to(ROOT)):
                     self.assertNotIn("_", name)

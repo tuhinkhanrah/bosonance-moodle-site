@@ -84,10 +84,41 @@ both SCSS and HTML backups to roll back.
 
 ### Uploading course and category descriptions
 
+The separate read-only
+[`local_bosonanceqbank` plugin](moodle-plugins/local/bosonanceqbank/README.md)
+provides question-bank listing/details, usage flags, XML export and structural
+XML previews with possible-duplicate warnings for Moodle 5.3.1. It has no
+import/apply or other question-bank write endpoint. Install and validate it on
+staging before use; see its README for scope and limitations.
+
 `scripts/upload-moodle-html.py` uses Moodle's standard REST API to update
 **course summaries and category descriptions only**. Course `general.html`
 sections, homepage blocks, slides, footer and theme settings are not supported;
 update those separately. The script never infers Moodle IDs from filenames.
+
+A separate, administrator-only Moodle plugin for listing block instances and
+updating HTML block content is available in
+[`moodle-plugins/local/bosonanceblocks`](moodle-plugins/local/bosonanceblocks/README.md).
+It must be installed and configured in Moodle; the course/category uploader
+above does not use it. Use `scripts/manage-moodle-blocks.py` to list blocks or
+update one HTML block through the plugin's web services:
+
+```bash
+read -rs -p "Moodle token: " MOODLE_TOKEN; echo
+export MOODLE_TOKEN
+python scripts/manage-moodle-blocks.py --url https://your-moodle.example list
+python scripts/manage-moodle-blocks.py --url https://your-moodle.example list --json
+python scripts/manage-moodle-blocks.py --url https://your-moodle.example update --id 123 --file new-content.html
+```
+
+Set `MOODLE_TOKEN` to a token for the restricted service containing
+`local_bosonanceblocks_list_blocks` and
+`local_bosonanceblocks_update_html`. The account must be a site administrator.
+Listing in JSON includes the stored HTML content. Updates are dry-run by
+default; inspect the target and proposed hashes, then add `--apply
+--backup-confirmed` to update. The update reads a fresh content hash before
+sending the change, but this is not an atomic lock against concurrent Moodle
+editing. Use HTTPS, keep tokens secret, and test changes on staging.
 
 Enable REST and a dedicated web service. Map generation needs
 `core_course_get_courses` and `core_course_get_categories`, with permission to

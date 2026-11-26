@@ -84,12 +84,47 @@ both SCSS and HTML backups to roll back.
 
 ### Uploading course and category descriptions
 
-The separate read-only
+The separate administrator-only
 [`local_bosonanceqbank` plugin](moodle-plugins/local/bosonanceqbank/README.md)
-provides question-bank listing/details, usage flags, XML export and structural
-XML previews with possible-duplicate warnings for Moodle 5.3.1. It has no
-import/apply or other question-bank write endpoint. Install and validate it on
-staging before use; see its README for scope and limitations.
+provides question-bank listing/details, usage flags, XML export, and
+preview-bound additive XML import with duplicate warnings for Moodle 5.3.1.
+It also includes default-disabled, preview-confirmed moves, status changes
+and experimental tag replacement and category creation/empty-leaf renaming.
+Current source is **1.3.0 alpha**, including automatic creation of missing
+XML tags on confirmed import and default-disabled deletion of unused whole
+entries/all versions and empty leaf categories or explicitly selected entirely
+empty subtrees and explicitly requested deletion of their unused question
+entries; see the
+[deletion constraints and staging upgrade](moodle-plugins/local/bosonanceqbank/README.md#unused-questionscategories-deletion).
+There is no general content update or cascading deletion of used questions.
+Version 1.0.0 packages the reviewed, tested scope for a
+production read/export baseline; optional writes remain disabled by default.
+Moodle PHPUnit passed 70 tests/272 assertions on the preceding 0.6.1 native
+code, all cooperating move/status/tag/category race checks passed, and
+independent review found no actionable bugs. The 1.0.0 release changes metadata
+and packaging, not endpoints/schema. Arbitrary concurrent Moodle UI/global
+writers are not supported. See its
+[production rollout](moodle-plugins/local/bosonanceqbank/README.md#production-rollout)
+for package/checksum, service restrictions, non-mutating `--read-only` smoke
+checks, backups and rollback.
+
+The previously verified 1.0.0 ZIP and SHA-256 checksum are not included in this
+working tree, so those release artifacts cannot be checked or downloaded from
+this checkout. The earlier package verification covered 35 files, with a
+byte-identical second build; 56 local script/package tests and 33 PHP syntax
+checks passed at that time. Installation rehearsal and production acceptance
+remain operator steps; no production configuration or deployment was changed
+here.
+
+Use [`scripts/manage-moodle-qbank.py`](scripts/manage-moodle-qbank.py) for all
+18 implemented read/export, preview/import, move, status, tag, category and deletion
+operations. The [CLI usage guide](docs/moodle-qbank-cli.md) documents connection,
+private output files, preview/apply confirmations, examples and recovery.
+Deletion commands need the upgraded alpha source and extra `--confirm-delete`;
+the CLI does not enable production writes or provide general content editing.
+The CLI and smoke tests share
+[`moodle_qbank_transport.py`](scripts/moodle_qbank_transport.py); copy that
+utility alongside the CLI when distributing it without the repository.
 
 `scripts/upload-moodle-html.py` uses Moodle's standard REST API to update
 **course summaries and category descriptions only**. Course `general.html`

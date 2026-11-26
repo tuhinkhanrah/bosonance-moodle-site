@@ -23,6 +23,8 @@ class provider implements
     private const MOVES = 'local_bosonanceqbank_move';
     private const STATUSES = 'local_bosonanceqbank_status';
     private const TAGS = 'local_bosonanceqbank_tags';
+    private const CATEGORIES = 'local_bosonanceqbank_category';
+    private const DELETIONS = 'local_bosonanceqbank_delete';
 
     public static function get_metadata(collection $collection): collection {
         $common = [
@@ -54,6 +56,20 @@ class provider implements
             'questionid' => 'privacy:metadata:questionid', 'oldtags' => 'privacy:metadata:oldtags',
             'newtags' => 'privacy:metadata:newtags', 'timecreated' => 'privacy:metadata:timecreated',
         ], 'privacy:metadata:tags');
+        $collection->add_database_table(self::CATEGORIES, [
+            'userid' => 'privacy:metadata:userid', 'contextid' => 'privacy:metadata:contextid',
+            'categoryid' => 'privacy:metadata:categoryid', 'parentid' => 'privacy:metadata:parentid',
+            'action' => 'privacy:metadata:action', 'oldname' => 'privacy:metadata:oldname',
+            'newname' => 'privacy:metadata:newname', 'resultcategoryid' => 'privacy:metadata:resultcategoryid',
+            'timecreated' => 'privacy:metadata:timecreated',
+        ], 'privacy:metadata:category');
+        $collection->add_database_table(self::DELETIONS, [
+            'userid' => 'privacy:metadata:userid', 'contextid' => 'privacy:metadata:contextid',
+            'categoryid' => 'privacy:metadata:categoryid', 'parentid' => 'privacy:metadata:parentid',
+            'entryid' => 'privacy:metadata:entryid', 'questionid' => 'privacy:metadata:questionid',
+            'kind' => 'privacy:metadata:kind', 'details' => 'privacy:metadata:details',
+            'timecreated' => 'privacy:metadata:timecreated',
+        ], 'privacy:metadata:delete');
         return $collection;
     }
 
@@ -65,14 +81,20 @@ class provider implements
                     OR ctx.id IN (SELECT contextid FROM {" . self::TABLES['import'] . "} WHERE userid = :u2)
                     OR ctx.id IN (SELECT contextid FROM {" . self::MOVES . "} WHERE userid = :u3)
                     OR ctx.id IN (SELECT contextid FROM {" . self::STATUSES . "} WHERE userid = :u4)
-                    OR ctx.id IN (SELECT contextid FROM {" . self::TAGS . "} WHERE userid = :u5)";
-        $contextlist->add_from_sql($sql, ['u1' => $userid, 'u2' => $userid, 'u3' => $userid, 'u4' => $userid, 'u5' => $userid]);
+                    OR ctx.id IN (SELECT contextid FROM {" . self::TAGS . "} WHERE userid = :u5)
+                    OR ctx.id IN (SELECT contextid FROM {" . self::CATEGORIES . "} WHERE userid = :u6)
+                    OR ctx.id IN (SELECT contextid FROM {" . self::DELETIONS . "} WHERE userid = :u7)";
+        $contextlist->add_from_sql($sql, [
+            'u1' => $userid, 'u2' => $userid, 'u3' => $userid, 'u4' => $userid, 'u5' => $userid, 'u6' => $userid,
+            'u7' => $userid,
+        ]);
         return $contextlist;
     }
 
     public static function get_users_in_context(userlist $userlist): void {
         $params = ['contextid' => $userlist->get_context()->id];
-        foreach (array_merge(array_values(self::TABLES), [self::MOVES, self::STATUSES, self::TAGS]) as $table) {
+        foreach (array_merge(array_values(self::TABLES),
+                [self::MOVES, self::STATUSES, self::TAGS, self::CATEGORIES, self::DELETIONS]) as $table) {
             $userlist->add_from_sql('userid', "SELECT userid FROM {{$table}} WHERE contextid = :contextid AND userid > 0",
                 $params);
         }
@@ -118,7 +140,24 @@ class provider implements
                 $record->timeused = $record->timeused ? transform::datetime($record->timeused) : null;
                 return $record;
             }, $tags));
-            if ($data['preview'] || $data['import'] || $data['move'] || $data['status'] || $data['tags']) {
+            $categories = $DB->get_records(self::CATEGORIES, ['userid' => $userid, 'contextid' => $context->id], 'id ASC',
+                'id, categoryid, parentid, action, oldname, newname, resultcategoryid, timecreated, timeused');
+            $data['category'] = array_values(array_map(static function($record) {
+                unset($record->id);
+                $record->timecreated = transform::datetime($record->timecreated);
+                $record->timeused = $record->timeused ? transform::datetime($record->timeused) : null;
+                return $record;
+            }, $categories));
+            $deletions = $DB->get_records(self::DELETIONS, ['userid' => $userid, 'contextid' => $context->id], 'id ASC',
+                'id, kind, categoryid, parentid, entryid, questionid, version, details, timecreated, timeused');
+            $data['delete'] = array_values(array_map(static function($record) {
+                unset($record->id);
+                $record->timecreated = transform::datetime($record->timecreated);
+                $record->timeused = $record->timeused ? transform::datetime($record->timeused) : null;
+                return $record;
+            }, $deletions));
+            if ($data['preview'] || $data['import'] || $data['move'] || $data['status'] || $data['tags']
+                    || $data['category'] || $data['delete']) {
                 writer::with_context($context)->export_data(
                     [get_string('pluginname', 'local_bosonanceqbank')], (object)$data);
             }
@@ -129,6 +168,7 @@ class provider implements
         global $DB;
 
         $DB->delete_records(self::TABLES['preview'], ['contextid' => $context->id]);
+        $DB->set_field(self::TABLES['import'], 'filename', '', ['contextid' => $context->id]);
         $DB->set_field(self::TABLES['import'], 'userid', 0, ['contextid' => $context->id]);
         $DB->delete_records(self::MOVES, ['contextid' => $context->id, 'timeused' => 0]);
         $DB->set_field(self::MOVES, 'userid', 0, ['contextid' => $context->id]);
@@ -136,6 +176,10 @@ class provider implements
         $DB->set_field(self::STATUSES, 'userid', 0, ['contextid' => $context->id]);
         $DB->delete_records(self::TAGS, ['contextid' => $context->id, 'timeused' => 0]);
         $DB->set_field(self::TAGS, 'userid', 0, ['contextid' => $context->id]);
+        $DB->delete_records(self::CATEGORIES, ['contextid' => $context->id, 'timeused' => 0]);
+        $DB->set_field(self::CATEGORIES, 'userid', 0, ['contextid' => $context->id]);
+        $DB->delete_records(self::DELETIONS, ['contextid' => $context->id, 'timeused' => 0]);
+        $DB->set_field(self::DELETIONS, 'userid', 0, ['contextid' => $context->id]);
     }
 
     public static function delete_data_for_user(approved_contextlist $contextlist): void {
@@ -158,6 +202,7 @@ class provider implements
         [$in, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
         $params['contextid'] = $contextid;
         $DB->delete_records_select(self::TABLES['preview'], "contextid = :contextid AND userid $in", $params);
+        $DB->set_field_select(self::TABLES['import'], 'filename', '', "contextid = :contextid AND userid $in", $params);
         $DB->set_field_select(self::TABLES['import'], 'userid', 0, "contextid = :contextid AND userid $in", $params);
         $DB->delete_records_select(self::MOVES, "contextid = :contextid AND userid $in AND timeused = 0", $params);
         $DB->set_field_select(self::MOVES, 'userid', 0, "contextid = :contextid AND userid $in", $params);
@@ -165,5 +210,9 @@ class provider implements
         $DB->set_field_select(self::STATUSES, 'userid', 0, "contextid = :contextid AND userid $in", $params);
         $DB->delete_records_select(self::TAGS, "contextid = :contextid AND userid $in AND timeused = 0", $params);
         $DB->set_field_select(self::TAGS, 'userid', 0, "contextid = :contextid AND userid $in", $params);
+        $DB->delete_records_select(self::CATEGORIES, "contextid = :contextid AND userid $in AND timeused = 0", $params);
+        $DB->set_field_select(self::CATEGORIES, 'userid', 0, "contextid = :contextid AND userid $in", $params);
+        $DB->delete_records_select(self::DELETIONS, "contextid = :contextid AND userid $in AND timeused = 0", $params);
+        $DB->set_field_select(self::DELETIONS, 'userid', 0, "contextid = :contextid AND userid $in", $params);
     }
 }

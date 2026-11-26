@@ -82,6 +82,20 @@ final class tags_test extends \advanced_testcase {
             \core_tag_tag::get_item_tags_array('core_question', 'question', $question->id))));
     }
 
+    public function test_rest_clear_requires_explicit_confirmation(): void {
+        [$context, $question, $tag] = $this->fixture();
+        $this->apply($this->preview($context, $question->id, [(int)$tag->id]));
+        $params = ['contextid' => $context->id, 'questionid' => $question->id, 'expectedversion' => 1];
+        $validated = external_api::validate_parameters(preview_tags::execute_parameters(), $params + ['clear' => true]);
+        $clear = preview_tags::execute(...array_values($validated));
+        $this->assertSame([], $clear['newtags']);
+        $this->apply($clear);
+        $this->assertCount(0, \core_tag_tag::get_item_tags('core_question', 'question', $question->id));
+        $this->assert_error('invalidparameter', fn() => preview_tags::execute($context->id, $question->id, 1));
+        $this->assert_error('invalidparameter',
+            fn() => preview_tags::execute($context->id, $question->id, 1, [(int)$tag->id], true));
+    }
+
     public function test_nonstandard_and_invalid_tags_are_rejected(): void {
         global $CFG;
         [$context, $question, $tag1] = $this->fixture();

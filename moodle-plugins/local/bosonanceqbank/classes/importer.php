@@ -38,6 +38,7 @@ class importer {
             'sha256' => $analysis['sha256'],
             'questioncount' => $analysis['questioncount'],
             'categories' => $analysis['categories'],
+            'tags' => $analysis['tags'],
             'warnings' => $analysis['warnings'],
             'warningshash' => self::warnings_hash($analysis['warnings']),
             'previewtoken' => $token,
@@ -112,6 +113,7 @@ class importer {
         $level = ob_get_level();
         $transaction = $DB->start_delegated_transaction();
         try {
+            $expectedtags = self::prepare_tags($analysis['tags']);
             ob_start();
             $ok = $format->importpreprocess() && $format->importprocess() && $format->importpostprocess();
             $output = ob_get_clean();
@@ -150,6 +152,16 @@ class importer {
                     'index' => $index + 1, 'questionid' => (int)$row->id, 'categoryid' => $expected,
                     'name' => $row->name, 'qtype' => $row->qtype,
                 ];
+            }
+            $tagparams = $params + ['component' => 'core_question', 'itemtype' => 'question'];
+            $tagrows = $DB->get_records_sql(
+                "SELECT DISTINCT ti.tagid FROM {tag_instance} ti
+                  WHERE ti.component = :component AND ti.itemtype = :itemtype AND ti.itemid $in", $tagparams);
+            $actualtags = array_map('intval', array_keys($tagrows));
+            sort($actualtags);
+            sort($expectedtags);
+            if ($actualtags !== $expectedtags) {
+                throw new \moodle_exception('importfailed', 'local_bosonanceqbank', '', 'unexpected question tags');
             }
             $now = time();
             $importid = $DB->insert_record(self::IMPORTS, (object)[
@@ -192,7 +204,7 @@ class importer {
         $categoryid = (int)$category->id;
         $sha256 = hash('sha256', $xml);
         $parsed = xml_preview::parse($xml);
-        self::moodle_check($context, $category, $xml, count($parsed['questions']));
+        $tags = self::moodle_check($context, $category, $xml, count($parsed['questions']));
         $rootpath = self::category_path($category, $contextid);
         $mappings = [];
         $categories = [];
@@ -253,6 +265,7 @@ class importer {
             'questioncount' => count($parsed['questions']),
             'questions' => $parsed['questions'],
             'categories' => $categories,
+            'tags' => $tags,
             'warnings' => $warnings,
             'exactrepeat' => (bool)$exact,
             'statehash' => self::state_hash($categoryid),
@@ -262,7 +275,7 @@ class importer {
     /**
      * Run Moodle's own XML reader and grade matching without saving questions.
      */
-    private static function moodle_check(\context $context, \stdClass $category, string $xml, int $expected): void {
+    private static function moodle_check(\context $context, \stdClass $category, string $xml, int $expected): array {
         $format = self::format($context, $category);
         $level = ob_get_level();
         ob_start();
@@ -281,13 +294,81 @@ class importer {
             throw new \moodle_exception('xmlmoodle', 'local_bosonanceqbank');
         }
         $options = \question_bank::fraction_options_full();
+        $names = [];
         foreach ($real as $question) {
+            $names = array_merge($names, $question->coursetags ?? [], $question->tags ?? []);
             foreach (is_array($question->fraction ?? null) ? $question->fraction : [] as $fraction) {
                 if (match_grade_options($options, $fraction, 'error') === false) {
                     throw new \moodle_exception('xmlgrade', 'local_bosonanceqbank');
                 }
             }
         }
+        $names = array_values(array_filter(\core_tag_tag::normalize($names, false), static fn($name) => $name !== ''));
+        $collection = \core_tag_area::get_collection('core_question', 'question');
+        $tags = \core_tag_tag::get_by_name_bulk($collection, $names, 'id, name, rawname, tagcollid, isstandard');
+        ksort($tags);
+        $result = [];
+        $rawnames = array_map('strval', array_flip(\core_tag_tag::normalize($names)));
+        foreach ($tags as $name => $tag) {
+            if (!$tag && $rawnames[$name] === '0') {
+                throw new \moodle_exception('xmltags', 'local_bosonanceqbank');
+            }
+            $result[] = $tag ? self::tag_details($tag) : [
+                'id' => 0, 'name' => $rawnames[$name], 'isstandard' => false,
+                'collectionid' => (int)$collection, 'action' => 'create',
+            ];
+        }
+        return $result;
+    }
+
+    private static function tag_details(\core_tag_tag $tag): array {
+        return [
+            'id' => (int)$tag->id, 'name' => $tag->rawname, 'isstandard' => (bool)$tag->isstandard,
+            'collectionid' => (int)$tag->tagcollid, 'action' => 'reuse',
+        ];
+    }
+
+    /** Create only previewed missing tags, in the same transaction as the questions. */
+    private static function prepare_tags(array $planned): array {
+        if (!$planned) {
+            return [];
+        }
+        $collection = $planned[0]['collectionid'];
+        $resolved = \core_tag_tag::get_by_name_bulk($collection, array_column($planned, 'name'),
+            'id, name, rawname, tagcollid, isstandard');
+        $missing = [];
+        foreach ($planned as $item) {
+            $name = \core_text::strtolower($item['name']);
+            $tag = $resolved[$name] ?? null;
+            if ($item['action'] === 'create') {
+                if ($tag) {
+                    throw new \moodle_exception('previewstale', 'local_bosonanceqbank');
+                }
+                $missing[] = $item['name'];
+            } else if (!$tag || self::tag_details($tag) !== $item) {
+                throw new \moodle_exception('previewstale', 'local_bosonanceqbank');
+            }
+        }
+        if ($missing) {
+            $resolved = array_replace($resolved, \core_tag_tag::create_if_missing($collection, $missing));
+        }
+        $ids = [];
+        foreach ($planned as $item) {
+            $tag = $resolved[\core_text::strtolower($item['name'])] ?? null;
+            if (!$tag || (int)$tag->id < 1) {
+                throw new \moodle_exception('importfailed', 'local_bosonanceqbank', '', 'tag creation failed');
+            }
+            $actual = self::tag_details($tag);
+            if ($item['action'] === 'create') {
+                $actual['id'] = 0;
+                $actual['action'] = 'create';
+            }
+            if ($actual !== $item) {
+                throw new \moodle_exception('importfailed', 'local_bosonanceqbank', '', 'unexpected tag metadata');
+            }
+            $ids[] = (int)$tag->id;
+        }
+        return $ids;
     }
 
     private static function format(\context $context, \stdClass $category): moodle_xml_format {
@@ -392,7 +473,7 @@ class importer {
     private static function fingerprint(array $analysis): string {
         return hash('sha256', json_encode([
             $analysis['sha256'], $analysis['questioncount'], $analysis['categories'],
-            $analysis['warnings'], $analysis['statehash'],
+            $analysis['warnings'], $analysis['statehash'], $analysis['tags'],
         ], JSON_THROW_ON_ERROR));
     }
 

@@ -2,6 +2,7 @@ import contextlib
 import importlib.util
 import io
 from pathlib import Path
+from threading import Lock
 from types import SimpleNamespace
 import unittest
 from unittest import mock
@@ -19,11 +20,19 @@ class FakeClient:
         self.previews = {}
         self.moves = 0
         self.failure = None
+        self.source_top = False
+        self.base, self.token, self.timeout = "https://example.test", "secret-token", 60
+        self.lock = Lock()
 
     def call(self, function, **params):
+        with self.lock:
+            return self._call(function, **params)
+
+    def _call(self, function, **params):
         if function == "list_categories":
             return {"total": 3, "items": [
-                {"categoryid": i, "parentid": 1, "name": str(i), "entrycount": int(i == 3)}
+                {"categoryid": i, "parentid": 0 if self.source_top and i == 3 else 1, "name": str(i),
+                 "entrycount": int(i == self.category) + int(self.failure == "unrelated_change" and self.moves > 0 and i == 3)}
                 for i in (2, 3, 4)
             ]}
         if function == "get_question":
@@ -56,7 +65,7 @@ class FakeClient:
         raise AssertionError(function)
 
 
-ARGS = SimpleNamespace(contextid=16, sourceid=3, targetid=2, alternateid=4, questionid=7)
+ARGS = SimpleNamespace(contextid=16, sourceid=3, targetid=2, alternateid=4, questionid=7, concurrent=False)
 
 
 class MoveTest(unittest.TestCase):
@@ -72,12 +81,15 @@ class MoveTest(unittest.TestCase):
         self.assertNotIn("0" * 63 + "1", output.getvalue())
 
     def test_declined_confirmation_makes_no_move(self):
-        client = FakeClient()
-        with mock.patch("builtins.input", return_value="no"), contextlib.redirect_stdout(io.StringIO()):
-            with self.assertRaises(move.TestFailure):
-                move.run(client, ARGS)
-        self.assertEqual(client.moves, 0)
-        self.assertEqual(client.category, 3)
+        for concurrent in (False, True):
+            client = FakeClient()
+            args = SimpleNamespace(**dict(vars(ARGS), concurrent=concurrent))
+            with self.subTest(concurrent=concurrent), mock.patch("builtins.input", return_value="no"), \
+                    mock.patch.object(move.qbank, "MoodleClient") as constructor, contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(move.TestFailure):
+                    move.run(client, args)
+            constructor.assert_not_called()
+            self.assertEqual((client.moves, client.category), (0, 3))
 
     def test_unexpected_stale_success_stops_without_return_move(self):
         client = FakeClient()
@@ -105,6 +117,53 @@ class MoveTest(unittest.TestCase):
             move.run(client, args)
         self.assertEqual(client.moves, 0)
         self.assertFalse(client.previews)
+
+    def test_top_source_is_rejected_before_a_move_that_cannot_be_reversed(self):
+        client = FakeClient()
+        client.source_top = True
+        with self.assertRaises(move.TestFailure):
+            move.run(client, ARGS)
+        self.assertEqual(client.moves, 0)
+        self.assertFalse(client.previews)
+
+    def test_concurrent_races_return_entry_to_source(self):
+        client = FakeClient()
+        args = SimpleNamespace(**dict(vars(ARGS), concurrent=True))
+        output = io.StringIO()
+        with mock.patch.object(move.qbank, "MoodleClient",
+                               side_effect=lambda *args: SimpleNamespace(call=client.call)) as constructor, \
+                mock.patch("builtins.input", return_value="MOVE"), contextlib.redirect_stdout(output):
+            move.run(client, args)
+        self.assertEqual(constructor.call_count, 4)
+        self.assertEqual(client.category, 3)
+        self.assertIn(client.moves, (2, 3))
+        self.assertEqual(output.getvalue().count("Independent concurrent requests"), 2)
+        self.assertNotIn(client.token, output.getvalue())
+
+    def test_second_competing_move_winner_is_returned_from_alternate(self):
+        client = FakeClient()
+        args = SimpleNamespace(**dict(vars(ARGS), concurrent=True))
+
+        def second_wins(client, function, previews, rejection):
+            proposed = previews[1]
+            return proposed, client.call(function, previewtoken=proposed["previewtoken"], exclusive=True)
+
+        with mock.patch.object(move, "race", side_effect=second_wins), \
+                mock.patch("builtins.input", return_value="MOVE"), contextlib.redirect_stdout(io.StringIO()):
+            move.run(client, args)
+        self.assertEqual((client.category, client.moves), (3, 3))
+
+    def test_concurrent_lost_response_or_unrelated_change_stops_without_return(self):
+        for failure in ("lost_response", "unrelated_change"):
+            client = FakeClient()
+            client.failure = failure
+            args = SimpleNamespace(**dict(vars(ARGS), concurrent=True))
+            with self.subTest(failure=failure), mock.patch.object(move.qbank, "MoodleClient",
+                    side_effect=lambda *args: SimpleNamespace(call=client.call)), \
+                    mock.patch("builtins.input", return_value="MOVE"), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(move.TestFailure):
+                    move.run(client, args)
+            self.assertEqual((client.category, client.moves), (2, 1))
 
 
 if __name__ == "__main__":

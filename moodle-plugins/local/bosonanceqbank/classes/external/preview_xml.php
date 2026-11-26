@@ -39,6 +39,13 @@ class preview_xml extends external_api {
                 'categoryid' => new external_value(PARAM_INT, 'Existing category ID or zero if missing'),
                 'action' => new external_value(PARAM_ALPHA, 'reuse or create; nothing is changed by preview'),
             ])),
+            'tags' => new external_multiple_structure(new external_single_structure([
+                'id' => new external_value(PARAM_INT, 'Existing tag ID, or zero for a tag created on apply'),
+                'name' => new external_value(PARAM_RAW, 'Existing or planned tag display name'),
+                'isstandard' => new external_value(PARAM_BOOL, 'Whether the tag is standard; new tags are nonstandard'),
+                'collectionid' => new external_value(PARAM_INT, 'Question tag collection ID'),
+                'action' => new external_value(PARAM_ALPHA, 'reuse or create; preview does not create tags'),
+            ])),
             'warnings' => new external_multiple_structure(new external_single_structure([
                 'code' => new external_value(PARAM_ALPHANUMEXT,
                     'exact_repeat, file_imported_elsewhere, duplicate_in_file or possible_existing_duplicate'),

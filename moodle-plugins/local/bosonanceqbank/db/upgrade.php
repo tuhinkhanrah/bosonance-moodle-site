@@ -31,5 +31,21 @@ function xmldb_local_bosonanceqbank_upgrade(int $oldversion): bool {
         }
         upgrade_plugin_savepoint(true, 2026112401, 'local', 'bosonanceqbank');
     }
+    if ($oldversion < 2026112501) {
+        if (!$dbman->table_exists('local_bosonanceqbank_category')) {
+            $dbman->install_one_table_from_xmldb_file(__DIR__ . '/install.xml', 'local_bosonanceqbank_category');
+        }
+        upgrade_plugin_savepoint(true, 2026112501, 'local', 'bosonanceqbank');
+    }
+    if ($oldversion < 2026112502) {
+        $DB->set_field('local_bosonanceqbank_import', 'filename', '', ['userid' => 0]);
+        upgrade_plugin_savepoint(true, 2026112502, 'local', 'bosonanceqbank');
+    }
+    if ($oldversion < 2026112504) {
+        if (!$dbman->table_exists('local_bosonanceqbank_delete')) {
+            $dbman->install_one_table_from_xmldb_file(__DIR__ . '/install.xml', 'local_bosonanceqbank_delete');
+        }
+        upgrade_plugin_savepoint(true, 2026112504, 'local', 'bosonanceqbank');
+    }
     return true;
 }

@@ -19,6 +19,7 @@ def run(client, args):
     item = info["question"]
     move.require(item["status"] == "ready", "Disposable question must initially be ready")
     entry, version = item["entryid"], item["version"]
+    bank = move.categories(client, args.contextid)
     print("Selected question:", item, flush=True)
 
     def preview(old, new):
@@ -29,27 +30,42 @@ def run(client, args):
                      and result["version"] == version and result["oldstatus"] == old
                      and result["newstatus"] == new and qbank.is_hex64(result["previewtoken"]),
                      "Unexpected status preview")
+        check_status(old)
         return result
 
     def check_status(expected):
         current = move.question(client, args.contextid, args.questionid, args.categoryid, entry)
-        move.require(current["question"]["version"] == version and current["question"]["status"] == expected,
-                     f"Question does not have expected version/status {version}/{expected}")
+        expected_versions = [dict(record, status=expected) if record["questionid"] == args.questionid
+                             else record for record in info["versions"]]
+        move.require(current["question"] == dict(item, status=expected)
+                     and current["versions"] == expected_versions,
+                     "Unexpected question metadata/version/status changes")
+        move.require(move.categories(client, args.contextid) == bank, "Unexpected category or question-count changes")
 
-    def apply(result):
-        move.show_preview("Status preview", result)
-        move.confirm("Review the preview and confirm exclusive bank access; type MOVE: ")
-        changed = client.call("change_status", previewtoken=result["previewtoken"], exclusive=True)
+    def verify(result, changed):
         move.require(all(changed[key] == result[key] for key in
-                         ("contextid", "categoryid", "entryid", "questionid", "version", "oldstatus", "newstatus")),
+                         ("contextid", "categoryid", "entryid", "questionid", "version", "oldstatus", "newstatus"))
+                     and qbank.is_int(changed["statusid"], 1),
                      "Unexpected status change result")
         check_status(result["newstatus"])
         print(f"[PASS] {result['oldstatus']} -> {result['newstatus']}; audit ID: {changed['statusid']}", flush=True)
 
+    def apply(result):
+        move.show_preview("Status preview", result)
+        move.confirm("Confirm isolated staging, disposable question and no other bank writes; type MOVE: ")
+        changed = client.call("change_status", previewtoken=result["previewtoken"], exclusive=True)
+        verify(result, changed)
+
     first = preview("ready", "draft")
     stale = preview("ready", "hidden")
     move.show_preview("Stale-test preview", stale)
-    apply(first)
+    if args.concurrent:
+        move.show_preview("Concurrent single-token status preview", first)
+        move.confirm("Confirm isolated staging, disposable question and no other bank writes; type MOVE: ")
+        winner, changed = move.race(client, "change_status", [first, first], "statuspreviewused")
+        verify(winner, changed)
+    else:
+        apply(first)
     for token, code in ((first["previewtoken"], "statuspreviewused"), (stale["previewtoken"], "statusstale")):
         try:
             client.call("change_status", previewtoken=token, exclusive=True)
@@ -59,18 +75,35 @@ def run(client, args):
             raise move.TestFailure(f"Expected {code}, but the change succeeded")
         check_status("draft")
         print(f"[PASS] Rejected with {code}; status remains draft", flush=True)
-    apply(preview("draft", "hidden"))
-    apply(preview("hidden", "ready"))
+    current_status = "draft"
+    if args.concurrent:
+        left = preview("draft", "hidden")
+        right = preview("draft", "ready")
+        move.show_preview("First competing status change", left)
+        move.show_preview("Second competing status change", right)
+        move.confirm("Confirm isolated staging and no bank writes except this controlled pair; type MOVE: ")
+        winner, changed = move.race(client, "change_status", [left, right], "statusstale")
+        verify(winner, changed)
+        current_status = winner["newstatus"]
+    else:
+        apply(preview("draft", "hidden"))
+        current_status = "hidden"
+    if current_status != "ready":
+        apply(preview(current_status, "ready"))
+    check_status("ready")
+    print("[PASS] Question status returned to ready", flush=True)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", required=True, help="HTTPS Moodle base URL")
+    parser.add_argument("--url", required=True, help="Moodle base URL; HTTP is allowed only for localhost/loopback")
     for name in ("contextid", "categoryid", "questionid"):
         parser.add_argument("--" + name, type=move.positive_int, required=True)
     parser.add_argument("--timeout", type=move.positive_int, default=60)
     parser.add_argument("--allow-status-change", action="store_true", required=True,
-                        help="Acknowledge this test changes a real question three times")
+                        help="Acknowledge this test changes a real question up to three times")
+    parser.add_argument("--concurrent", action="store_true",
+                        help="Race one status token, then draft-to-hidden/ready previews; restore ready")
     args = parser.parse_args(argv)
     try:
         client = qbank.MoodleClient(args.url, os.environ.get("MOODLE_TOKEN", ""), args.timeout)

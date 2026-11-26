@@ -162,6 +162,173 @@ final class external_test extends \advanced_testcase {
         $this->assertSame(1, $DB->count_records('local_bosonanceqbank_import'));
     }
 
+    public function test_xml_previews_missing_tags_then_creates_and_assigns_them_on_import(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->setAdminUser();
+        require_once($CFG->libdir . '/questionlib.php');
+        [$context, $category] = $this->bank_fixture();
+        $collection = \core_tag_area::get_collection('core_question', 'question');
+        $existing = $this->getDataGenerator()->create_tag([
+            'rawname' => 'Existing import tag', 'isstandard' => 1, 'tagcollid' => $collection,
+        ]);
+        $original = $DB->get_record('tag', ['id' => $existing->id], '*', MUST_EXIST);
+        $before = $DB->count_records('tag');
+        $questionsbefore = $DB->get_records('question');
+        $first = str_replace('</question>',
+            '<tags><tag><text>New import tag</text></tag></tags></question>', $this->question_xml());
+        $tagged = str_replace('</question>',
+            '<tags><tag><text>NEW IMPORT TAG</text></tag><tag><text>New second tag</text></tag></tags>'
+            . '<coursetags><tag><text>Existing import tag</text></tag></coursetags></question>', $this->question_xml());
+        $this->upload('<quiz>' . $first . $tagged . '</quiz>');
+        $preview = $this->preview($context, $category);
+        $this->assertEquals($before, $DB->count_records('tag'));
+        $this->assertEquals($questionsbefore, $DB->get_records('question'));
+        $created = array_values(array_filter($preview['tags'], fn($tag) => $tag['action'] === 'create'));
+        $this->assertCount(2, $created);
+        foreach ($created as $tag) {
+            $this->assertSame(0, $tag['id']);
+            $this->assertFalse($tag['isstandard']);
+            $this->assertSame((int)$collection, $tag['collectionid']);
+        }
+        $result = $this->import($preview);
+        $this->assertEquals($before + 2, $DB->count_records('tag'));
+        $new = $DB->get_record('tag', ['tagcollid' => $collection, 'name' => 'new import tag'], '*', MUST_EXIST);
+        $second = $DB->get_record('tag', ['tagcollid' => $collection, 'name' => 'new second tag'], '*', MUST_EXIST);
+        $this->assertSame(0, (int)$new->isstandard);
+        $this->assertSame(0, (int)$second->isstandard);
+        $this->assertEquals($original, $DB->get_record('tag', ['id' => $existing->id]));
+        $firstids = array_map('intval', array_keys(\core_tag_tag::get_item_tags_array(
+            'core_question', 'question', $result['questions'][0]['questionid'])));
+        $secondids = array_map('intval', array_keys(\core_tag_tag::get_item_tags_array(
+            'core_question', 'question', $result['questions'][1]['questionid'])));
+        $this->assertSame([(int)$new->id], $firstids);
+        $this->assertEqualsCanonicalizing([(int)$new->id, (int)$second->id, (int)$existing->id], $secondids);
+        $this->assert_error('previewused', fn() => $this->import($preview));
+        $this->assertEquals($before + 2, $DB->count_records('tag'));
+    }
+
+    public function test_missing_tag_created_after_preview_rejects_stale_import(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->setAdminUser();
+        require_once($CFG->libdir . '/questionlib.php');
+        [$context, $category] = $this->bank_fixture();
+        $this->upload('<quiz>' . str_replace('</question>',
+            '<tags><tag><text>Planned tag</text></tag></tags></question>', $this->question_xml()) . '</quiz>');
+        $preview = $this->preview($context, $category);
+        $before = $DB->get_records('question');
+        $this->getDataGenerator()->create_tag([
+            'rawname' => 'Planned tag', 'tagcollid' => \core_tag_area::get_collection('core_question', 'question'),
+        ]);
+        $this->assert_error('previewstale', fn() => $this->import($preview));
+        $this->assertEquals($before, $DB->get_records('question'));
+        $this->assertEquals(0, $DB->count_records('local_bosonanceqbank_import'));
+        $this->assertSame(0, (int)$DB->get_field('local_bosonanceqbank_preview', 'timeused', []));
+    }
+
+    public function test_failed_import_rolls_back_new_tags_and_questions(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->setAdminUser();
+        require_once($CFG->libdir . '/questionlib.php');
+        [$context, $category] = $this->bank_fixture();
+        $xml = '<quiz>' . str_replace('</question>',
+            '<tags><tag><text>Rollback tag</text></tag></tags></question>', $this->question_xml()) . '</quiz>';
+        $this->upload($xml);
+        $preview = $this->preview($context, $category);
+        $record = $DB->get_record('local_bosonanceqbank_preview',
+            ['tokenhash' => hash('sha256', $preview['previewtoken'])], '*', MUST_EXIST);
+        $analysis = (new \ReflectionMethod(importer::class, 'analyse'))->invoke(null, $context, $category, $xml);
+        // Force a post-import count mismatch after the native helpers have created tags and questions.
+        $analysis['questioncount']++;
+        $before = $DB->get_records('tag');
+        $questionsbefore = $DB->get_records('question');
+        $this->assert_error('importfailed', fn() => (new \ReflectionMethod(importer::class, 'import'))
+            ->invoke(null, $context, $category, $record, $xml, $analysis, false));
+        $this->assertEquals($before, $DB->get_records('tag'));
+        $this->assertEquals($questionsbefore, $DB->get_records('question'));
+        $this->assertEquals(0, $DB->count_records('local_bosonanceqbank_import'));
+        $this->assertSame(0, (int)$DB->get_field('local_bosonanceqbank_preview', 'timeused', []));
+    }
+
+    public function test_xml_import_reuses_and_previews_existing_tags(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->setAdminUser();
+        require_once($CFG->libdir . '/questionlib.php');
+        [$context, $category] = $this->bank_fixture();
+        $collection = \core_tag_area::get_collection('core_question', 'question');
+        $tag = $this->getDataGenerator()->create_tag(['rawname' => 'Existing import tag', 'tagcollid' => $collection]);
+        $before = $DB->count_records('tag');
+        $tagged = str_replace('</question>',
+            '<coursetags><tag><text>Existing import tag</text></tag></coursetags></question>', $this->question_xml());
+        $this->upload('<quiz>' . $this->question_xml() . $tagged . '</quiz>');
+        $preview = $this->preview($context, $category);
+        $this->assertSame([(int)$tag->id], array_column($preview['tags'], 'id'));
+        $this->assertSame('reuse', $preview['tags'][0]['action']);
+        $result = $this->import($preview);
+        $this->assertEquals($before, $DB->count_records('tag'));
+        $first = $result['questions'][0]['questionid'];
+        $second = $result['questions'][1]['questionid'];
+        $this->assertCount(0, \core_tag_tag::get_item_tags('core_question', 'question', $first));
+        $this->assertSame([(int)$tag->id], array_map('intval', array_keys(
+            \core_tag_tag::get_item_tags_array('core_question', 'question', $second))));
+    }
+
+    public function test_tag_metadata_change_after_preview_rejects_import(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->setAdminUser();
+        require_once($CFG->libdir . '/questionlib.php');
+        [$context, $category] = $this->bank_fixture();
+        $tag = $this->getDataGenerator()->create_tag([
+            'rawname' => 'Existing import tag', 'isstandard' => 1,
+            'tagcollid' => \core_tag_area::get_collection('core_question', 'question'),
+        ]);
+        $this->upload('<quiz>' . str_replace('</question>',
+            '<tags><tag><text>Existing import tag</text></tag></tags></question>', $this->question_xml()) . '</quiz>');
+        $preview = $this->preview($context, $category);
+        $DB->set_field('tag', 'isstandard', 0, ['id' => $tag->id]);
+        $this->assert_error('previewstale', fn() => $this->import($preview));
+        $this->assertEquals(0, $DB->count_records('local_bosonanceqbank_import'));
+    }
+
+    public function test_privacy_erasure_scrubs_filenames_and_preserves_repeat_signatures(): void {
+        global $CFG, $DB, $USER;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->setAdminUser();
+        require_once($CFG->libdir . '/questionlib.php');
+        [$context, $category] = $this->bank_fixture();
+        $this->upload('<quiz>' . $this->question_xml() . '</quiz>');
+        $result = $this->import($this->preview($context, $category));
+        $original = $DB->get_record('local_bosonanceqbank_import', ['id' => $result['importid']], '*', MUST_EXIST);
+        $other = clone $original;
+        unset($other->id);
+        $other->userid = $this->getDataGenerator()->create_user()->id;
+        $other->filename = 'other-user.xml';
+        $otherid = $DB->insert_record('local_bosonanceqbank_import', $other);
+        $provider = \local_bosonanceqbank\privacy\provider::class;
+        $provider::delete_data_for_user(new \core_privacy\local\request\approved_contextlist(
+            $USER, 'local_bosonanceqbank', [$context->id]));
+        $erased = $DB->get_record('local_bosonanceqbank_import', ['id' => $original->id], '*', MUST_EXIST);
+        $this->assertSame('', $erased->filename);
+        $this->assertEquals(0, $erased->userid);
+        $this->assertSame($original->sha256, $erased->sha256);
+        $this->assertSame($original->questionids, $erased->questionids);
+        $this->assertSame('other-user.xml', $DB->get_field('local_bosonanceqbank_import', 'filename', ['id' => $otherid]));
+        $this->assertTrue($this->preview($context, $category)['requiresduplicateoverride']);
+        $provider::delete_data_for_all_users_in_context($context);
+        $this->assertSame('', $DB->get_field('local_bosonanceqbank_import', 'filename', ['id' => $otherid]));
+        $this->assertEquals(0, $DB->get_field('local_bosonanceqbank_import', 'userid', ['id' => $otherid]));
+    }
+
     public function test_exact_repeat_requires_explicit_override(): void {
         global $DB;
 

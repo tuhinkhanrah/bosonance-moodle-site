@@ -1,11 +1,13 @@
 """Opt-in live test of one disposable question-bank entry move and return."""
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import importlib.util
 import json
 import os
 from pathlib import Path
 import sys
+from threading import Barrier
 
 _spec = importlib.util.spec_from_file_location(
     "qbank_api_client", Path(__file__).with_name("test-moodle-qbank-api.py")
@@ -69,6 +71,32 @@ def show_preview(label, result):
                                    if key != "previewtoken"}, indent=2), flush=True)
 
 
+def race(client, function, previews, rejection):
+    require(len(previews) == 2, "A controlled race requires exactly two previews")
+    clients = [qbank.MoodleClient(client.base, client.token, client.timeout) for _ in previews]
+    barrier = Barrier(len(clients))
+
+    def request(index):
+        barrier.wait(timeout=30)
+        try:
+            return index, clients[index].call(function, previewtoken=previews[index]["previewtoken"],
+                                              exclusive=True), None
+        except qbank.ApiError as error:
+            return index, None, error
+
+    with ThreadPoolExecutor(max_workers=len(clients)) as executor:
+        outcomes = list(executor.map(request, range(len(clients))))
+    successes = [(index, result) for index, result, error in outcomes if error is None]
+    errors = [error for _, _, error in outcomes if error is not None]
+    require(len(successes) == 1 and len(errors) == 1,
+            "Concurrent requests did not produce exactly one success and one rejection; inspect audit/state")
+    require(errors[0].errorcode == rejection,
+            f"Expected {rejection}; got {errors[0].errorcode or str(errors[0])}")
+    index, result = successes[0]
+    print(f"[PASS] Independent concurrent requests: one success, one {rejection}", flush=True)
+    return previews[index], result
+
+
 def confirm(prompt):
     require(input(prompt).strip() == "MOVE", "Cancelled by user")
 
@@ -92,8 +120,8 @@ def run(client, args):
     bank = categories(client, context)
     require(all(category in bank for category in (source, target, alternate)),
             "All categories must exist in the selected bank")
-    require(bank[target]["parentid"] != 0 and bank[alternate]["parentid"] != 0,
-            "Destinations must not be the top category")
+    require(all(bank[category]["parentid"] != 0 for category in (source, target, alternate)),
+            "Source and destinations must not be the top category; the test must be able to return to source")
     require(bank[alternate]["entrycount"] == 0, "Alternate category must be empty")
     original = question(client, context, questionid, source)
     item = original["question"]
@@ -101,33 +129,69 @@ def run(client, args):
     print("Selected question:", json.dumps(item, indent=2), flush=True)
     print("Categories:", json.dumps([bank[c] for c in (source, target, alternate)], indent=2), flush=True)
 
+    def check_location(location):
+        current = question(client, context, questionid, location, entry)
+        require(current["question"] == dict(item, categoryid=location)
+                and current["versiontotal"] == count and current["versions"] == original["versions"],
+                "Unexpected question metadata/version changes")
+        expected = dict(bank)
+        if location != source:
+            expected[source] = dict(bank[source], entrycount=bank[source]["entrycount"] - 1)
+            expected[location] = dict(bank[location], entrycount=bank[location]["entrycount"] + 1)
+        require(categories(client, context) == expected, "Unexpected category or question-count changes")
+
+    def verify(proposed, result):
+        require(all(result[key] == proposed[key] for key in
+                    ("contextid", "questionid", "entryid", "version", "sourceid", "targetid", "versions"))
+                and qbank.is_int(result["moveid"], 1), "Unexpected move result")
+        check_location(proposed["targetid"])
+        print("[PASS] Move and destination verified; audit ID:", result["moveid"], flush=True)
+
+    def apply(proposed, label):
+        show_preview(label, proposed)
+        confirm("Confirm isolated staging, disposable question and no other bank writes; type MOVE: ")
+        result = client.call("move_question", previewtoken=proposed["previewtoken"], exclusive=True)
+        verify(proposed, result)
+
     forward = preview(client, context, questionid, version, source, target, entry, count)
     stale = preview(client, context, questionid, version, source, alternate, entry, count)
     require(forward["versions"] == stale["versions"], "Question versions changed between previews")
-    show_preview("Forward preview", forward)
     show_preview("Stale-test preview", stale)
-    confirm("Review both previews. Confirm disposable question and exclusive bank access; type MOVE: ")
-    result = client.call("move_question", previewtoken=forward["previewtoken"], exclusive=True)
-    require(result["entryid"] == entry and result["sourceid"] == source and result["targetid"] == target
-            and result["versions"] == forward["versions"], "Unexpected move result")
-    question(client, context, questionid, target, entry)
-    print("[PASS] Move and destination verified; audit ID:", result["moveid"], flush=True)
+    check_location(source)
+    if args.concurrent:
+        show_preview("Concurrent single-token move preview", forward)
+        confirm("Confirm isolated staging, disposable question and no other bank writes; type MOVE: ")
+        winner, result = race(client, "move_question", [forward, forward], "previewused")
+        verify(winner, result)
+    else:
+        apply(forward, "Forward preview")
 
     expect_error(client, "previewused", forward["previewtoken"])
-    question(client, context, questionid, target, entry)
+    check_location(target)
     expect_error(client, "previewstale", stale["previewtoken"])
-    question(client, context, questionid, target, entry)
+    check_location(target)
     print("[PASS] Rejected attempts left the question in the destination", flush=True)
 
-    back = preview(client, context, questionid, version, target, source, entry, count)
-    require(back["versions"] == forward["versions"], "Question versions changed before return move")
-    show_preview("Return preview", back)
-    confirm("Review the return preview and confirm exclusive bank access; type MOVE: ")
-    result = client.call("move_question", previewtoken=back["previewtoken"], exclusive=True)
-    require(result["entryid"] == entry and result["sourceid"] == target and result["targetid"] == source
-            and result["versions"] == back["versions"], "Unexpected return move result")
-    question(client, context, questionid, source, entry)
-    print("[PASS] Return move verified; audit ID:", result["moveid"], flush=True)
+    location = target
+    if args.concurrent:
+        left = preview(client, context, questionid, version, target, source, entry, count)
+        right = preview(client, context, questionid, version, target, alternate, entry, count)
+        require(left["versions"] == right["versions"] == forward["versions"],
+                "Question versions changed between competing previews")
+        check_location(target)
+        show_preview("First competing move", left)
+        show_preview("Second competing move", right)
+        confirm("Confirm isolated staging and no bank writes except this controlled pair; type MOVE: ")
+        winner, result = race(client, "move_question", [left, right], "previewstale")
+        verify(winner, result)
+        location = winner["targetid"]
+    if location != source:
+        back = preview(client, context, questionid, version, location, source, entry, count)
+        require(back["versions"] == forward["versions"], "Question versions changed before return move")
+        check_location(location)
+        apply(back, "Return preview")
+    check_location(source)
+    print("[PASS] Question entry returned to the original category", flush=True)
 
 
 def positive_int(value):
@@ -142,12 +206,14 @@ def positive_int(value):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", required=True, help="HTTPS Moodle base URL")
+    parser.add_argument("--url", required=True, help="Moodle base URL; HTTP is allowed only for localhost/loopback")
     for name in ("contextid", "sourceid", "targetid", "alternateid", "questionid"):
         parser.add_argument("--" + name, type=positive_int, required=True)
     parser.add_argument("--timeout", type=positive_int, default=60, help="Request timeout in seconds")
     parser.add_argument("--allow-move", action="store_true", required=True,
-                        help="Acknowledge this test moves a real question twice")
+                        help="Acknowledge this moves a real entry twice, or up to three times with --concurrent")
+    parser.add_argument("--concurrent", action="store_true",
+                        help="Race one move token, then competing moves to source/alternate; return to source")
     args = parser.parse_args(argv)
     try:
         client = qbank.MoodleClient(args.url, os.environ.get("MOODLE_TOKEN", ""), args.timeout)

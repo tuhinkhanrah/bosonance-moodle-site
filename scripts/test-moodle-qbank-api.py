@@ -13,21 +13,35 @@ question bank UI afterwards; its ID is printed.
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
 import sys
 import uuid
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
 from xml.etree import ElementTree
 from xml.sax.saxutils import escape
 
-PREFIX = "local_bosonanceqbank_"
-STATUSES = ("ready", "draft", "hidden", "all")
-SUMMARY_KEYS = {"questionid", "entryid", "categoryid", "version", "status", "name", "qtype", "timemodified"}
-CONTENT_KEYS = {"questiontext", "questiontextformat", "generalfeedback", "generalfeedbackformat"}
+_spec = importlib.util.spec_from_file_location(
+    "moodle_qbank_transport", Path(__file__).with_name("moodle_qbank_transport.py")
+)
+if _spec is None or _spec.loader is None:
+    raise RuntimeError("Cannot load the question-bank API client")
+if _spec.name in sys.modules:
+    _transport = sys.modules[_spec.name]
+else:
+    _transport = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_transport)
+    sys.modules[_spec.name] = _transport
+
+ApiError = _transport.ApiError
+MoodleClient = _transport.MoodleClient
+NoRedirect = _transport.NoRedirect
+PREFIX = _transport.PREFIX
+STATUSES = _transport.STATUSES
+SUMMARY_KEYS = _transport.SUMMARY_KEYS
+CONTENT_KEYS = _transport.CONTENT_KEYS
+is_int = _transport.is_int
 MAX_ID = 2**31 - 1
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_XML = (
@@ -36,104 +50,8 @@ DEFAULT_XML = (
 )
 
 
-class ApiError(Exception):
-    def __init__(self, message, errorcode=None):
-        super().__init__(message)
-        self.errorcode = errorcode
-
-
 class SkipTest(Exception):
     pass
-
-
-class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        raise HTTPError(req.full_url, code, "Redirect refused", headers, fp)
-
-
-class MoodleClient:
-    def __init__(self, base_url, token, timeout=60):
-        try:
-            parsed = urlsplit(base_url)
-        except ValueError:
-            raise ApiError("Invalid Moodle base URL") from None
-        if (
-            parsed.scheme != "https" or not parsed.hostname or parsed.username is not None
-            or parsed.password is not None or parsed.query or parsed.fragment
-        ):
-            raise ApiError("Moodle URL must be an HTTPS base URL without credentials, query or fragment")
-        if not token or not token.strip():
-            raise ApiError("Set the MOODLE_TOKEN environment variable")
-        self.base = base_url.rstrip("/")
-        self.token = token
-        self.timeout = timeout
-        self.opener = build_opener(NoRedirect())
-
-    def _redact(self, value):
-        return str(value).replace(self.token, "[redacted]")
-
-    def _send(self, request, label):
-        try:
-            with self.opener.open(request, timeout=self.timeout) as response:
-                body = response.read()
-        except HTTPError as exc:
-            raise ApiError(f"{label}: HTTP {exc.code}; redirects are not followed") from None
-        except (URLError, TimeoutError, OSError):
-            raise ApiError(f"{label}: network request failed") from None
-        try:
-            result = json.loads(body)
-        except (UnicodeError, json.JSONDecodeError):
-            raise ApiError(f"{label}: Moodle did not return valid JSON") from None
-        if isinstance(result, dict) and ("exception" in result or "error" in result):
-            code = self._redact(result.get("errorcode", "unknown"))
-            message = self._redact(result.get("message") or result.get("error") or "Moodle API error")
-            raise ApiError(f"{label}: {code}: {message}", code)
-        return result
-
-    def call(self, function, **parameters):
-        fields = {"wstoken": self.token, "wsfunction": PREFIX + function, "moodlewsrestformat": "json"}
-        for key, value in parameters.items():
-            if isinstance(value, (list, tuple)):
-                for index, item in enumerate(value):
-                    fields[f"{key}[{index}]"] = item
-            elif isinstance(value, bool):
-                fields[key] = int(value)
-            else:
-                fields[key] = value
-        request = Request(
-            self.base + "/webservice/rest/server.php",
-            data=urlencode(fields).encode("utf-8"),
-            headers={"Accept": "application/json"},
-            method="POST",
-        )
-        return self._send(request, function)
-
-    def upload_draft(self, filename, content):
-        boundary = "----qbanktest" + uuid.uuid4().hex
-        parts = [
-            f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode()
-            for name, value in (("token", self.token), ("filearea", "draft"), ("itemid", "0"), ("filepath", "/"))
-        ]
-        parts.append(
-            f'--{boundary}\r\nContent-Disposition: form-data; name="file_1"; filename="{filename}"\r\n'
-            "Content-Type: text/xml\r\n\r\n".encode() + content + b"\r\n"
-        )
-        parts.append(f"--{boundary}--\r\n".encode())
-        request = Request(
-            self.base + "/webservice/upload.php",
-            data=b"".join(parts),
-            headers={"Accept": "application/json", "Content-Type": f"multipart/form-data; boundary={boundary}"},
-            method="POST",
-        )
-        result = self._send(request, "upload")
-        if not isinstance(result, list) or len(result) != 1 or not isinstance(result[0], dict):
-            raise ApiError("upload: unexpected response")
-        if result[0].get("error"):
-            raise ApiError(f"upload: {self._redact(result[0].get('errortype', 'error'))}: {self._redact(result[0]['error'])}")
-        itemid = result[0].get("itemid")
-        if type(itemid) is not int or itemid <= 0 or result[0].get("filename") != filename:
-            raise ApiError("upload: response missing draft item ID or filename")
-        return itemid
 
 
 class Runner:
@@ -172,10 +90,6 @@ class Runner:
         counts = {s: sum(1 for r in self.results if r[0] == s) for s in ("PASS", "FAIL", "SKIP")}
         print(f"\nSummary: {counts['PASS']} passed, {counts['FAIL']} failed, {counts['SKIP']} skipped")
         return counts["FAIL"] == 0
-
-
-def is_int(value, minimum=0):
-    return type(value) is int and value >= minimum
 
 
 def assert_category(item):
@@ -239,6 +153,12 @@ def run_tests(client, args):
     runner = Runner()
     state = {}
     ctx = args.contextid
+
+    if args.read_only:
+        def before_reads():
+            state["readonly_before"] = snapshot(client, ctx)
+        if not runner.check("read-only: initial bank counts", before_reads):
+            return runner
 
     # list_categories
     def categories_all():
@@ -348,6 +268,13 @@ def run_tests(client, args):
         return f"{len(exportable)} question(s), {len(xml)} bytes"
     runner.check("export_xml: hash, count and category paths", export)
 
+    if args.read_only:
+        def unchanged_after_reads():
+            assert snapshot(client, ctx) == state["readonly_before"], "bank counts changed during read-only checks"
+        runner.check("read-only: bank counts unchanged", unchanged_after_reads)
+        runner.record("SKIP", "preview/import and write-function checks", "--read-only calls only read/export functions")
+        return runner
+
     # preview_xml
     try:
         before = snapshot(client, ctx)
@@ -367,6 +294,7 @@ def run_tests(client, args):
         assert is_int(result["expires"], 1), "expires"
         repeat = any(w["code"] == "exact_repeat" for w in result["warnings"])
         assert result["requiresduplicateoverride"] is repeat, "requiresduplicateoverride disagrees with exact_repeat"
+        assert _transport.valid_import_tags(result.get("tags")), "invalid preview tag plan"
         for c in result["categories"]:
             assert c["action"] in ("reuse", "create"), "unknown category action"
             assert (c["categoryid"] == 0) == (c["action"] == "create"), "create/reuse does not match categoryid"
@@ -586,7 +514,7 @@ def is_hex64(value):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--url", required=True, help="HTTPS Moodle base URL")
+    parser.add_argument("--url", required=True, help="Moodle base URL; HTTP is allowed only for localhost/loopback")
     parser.add_argument("--contextid", type=int, required=True, help="Module context ID of the qbank/quiz question bank")
     parser.add_argument("--categoryid", type=int, help="Category in that bank to test (default: fullest category)")
     parser.add_argument("--other-contextid", type=int, help="Second bank context ID for cross-bank isolation checks")
@@ -597,11 +525,15 @@ def main(argv=None):
                         help="Parent category for real import tests; a new uniquely named child is created in it")
     parser.add_argument("--allow-import", action="store_true",
                         help="Required with --import-categoryid to confirm that test questions may be created")
+    parser.add_argument("--read-only", action="store_true",
+                        help="Production smoke check: read/export only, with no uploads, previews or write calls")
     args = parser.parse_args(argv)
     if not 1 <= args.export_count <= 100:
         parser.error("--export-count must be between 1 and 100")
     if bool(args.import_categoryid) != args.allow_import:
         parser.error("--import-categoryid and --allow-import must be given together")
+    if args.read_only and (args.allow_import or args.import_categoryid is not None):
+        parser.error("--read-only cannot be combined with import options")
     try:
         client = MoodleClient(args.url, os.environ.get("MOODLE_TOKEN", ""), args.timeout)
     except ApiError as exc:

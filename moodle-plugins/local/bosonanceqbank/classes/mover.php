@@ -93,6 +93,9 @@ class mover {
                         || $entry->idnumber !== $analysis['idnumber']) {
                     throw new \moodle_exception('movefailed', 'local_bosonanceqbank');
                 }
+                foreach ($analysis['versions'] as $version) {
+                    \question_bank::notify_question_edited($version['questionid']);
+                }
                 $now = time();
                 $DB->set_field(self::TABLE, 'timeused', $now, ['id' => $record->id]);
                 $transaction->allow_commit();

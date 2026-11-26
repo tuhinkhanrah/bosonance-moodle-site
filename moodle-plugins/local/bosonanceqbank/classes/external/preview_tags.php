@@ -16,14 +16,27 @@ class preview_tags extends external_api {
             'contextid' => new external_value(PARAM_INT, 'Question bank module context'),
             'questionid' => new external_value(PARAM_INT, 'Latest question version ID'),
             'expectedversion' => new external_value(PARAM_INT, 'Expected latest version number'),
-            'tagids' => new external_multiple_structure(new external_value(PARAM_INT, 'Existing standard tag ID')),
+            'tagids' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Existing standard tag ID'),
+                'Ordered tag IDs; omit only when clear is true',
+                VALUE_DEFAULT, null, NULL_ALLOWED
+            ),
+            'clear' => new external_value(PARAM_BOOL, 'Explicitly clear all tags', VALUE_DEFAULT, false),
         ]);
     }
 
-    public static function execute(int $contextid, int $questionid, int $expectedversion, array $tagids): array {
+    public static function execute(
+        int $contextid, int $questionid, int $expectedversion, ?array $tagids = null, bool $clear = false
+    ): array {
         $params = self::validate_parameters(self::execute_parameters(),
-            compact('contextid', 'questionid', 'expectedversion', 'tagids'));
-        return tag_changer::preview($params['contextid'], $params['questionid'], $params['expectedversion'], $params['tagids']);
+            compact('contextid', 'questionid', 'expectedversion', 'tagids', 'clear'));
+        if (($params['tagids'] === null && !$params['clear'])
+                || ($params['clear'] && !empty($params['tagids']))) {
+            throw new \invalid_parameter_exception(get_string('tagsclearinvalid', 'local_bosonanceqbank'));
+        }
+        return tag_changer::preview(
+            $params['contextid'], $params['questionid'], $params['expectedversion'], $params['tagids'] ?? []
+        );
     }
 
     public static function result_fields(): array {

@@ -186,7 +186,7 @@ class FakeMoodle:
                                 "exact": bool(repeats), "sha256": sha256, "categoryid": categoryid,
                                 "categories": categories, "questions": questions}
         return {"contextid": contextid, "categoryid": categoryid, "sha256": sha256,
-                "questioncount": len(questions), "categories": categories, "warnings": warnings,
+                "questioncount": len(questions), "categories": categories, "tags": [], "warnings": warnings,
                 "warningshash": warningshash, "previewtoken": token, "expires": 2000000000, "canapply": True,
                 "requiresduplicateoverride": bool(repeats) and not self.ignore_repeats}
 
@@ -240,6 +240,7 @@ class Args:
     xml = str(Path(__file__).resolve().parent / "missing-sample.xml")
     import_categoryid = None
     allow_import = False
+    read_only = False
 
 
 class ImportArgs(Args):
@@ -273,6 +274,41 @@ class LiveQbankScriptTest(unittest.TestCase):
             self.assertIn(f"[PASS] import_xml: {name}", output)
         self.assertEqual(len(fake.imports), 2)
 
+    def test_read_only_uses_only_read_functions_and_never_uploads(self):
+        class ReadArgs(Args):
+            read_only = True
+
+        fake = FakeMoodle()
+        with mock.patch.object(fake, "upload_draft") as upload, \
+                mock.patch.object(fake, "call", wraps=fake.call) as call:
+            runner, output = run(fake, ReadArgs)
+        self.assertNotIn("FAIL", [status for status, _ in runner.results], output)
+        upload.assert_not_called()
+        self.assertEqual({request.args[0] for request in call.call_args_list},
+                         {"list_categories", "list_questions", "get_question", "export_xml"})
+        self.assertIn(("PASS", "read-only: bank counts unchanged"), runner.results)
+
+    def test_read_only_rejects_import_options_before_connecting(self):
+        with mock.patch.object(qbank, "MoodleClient") as client, \
+                contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            qbank.main(["--url", "https://moodle.example", "--contextid", "5", "--read-only",
+                        "--import-categoryid", "2", "--allow-import"])
+        client.assert_not_called()
+
+    def test_read_only_detects_bank_changes_during_checks(self):
+        class ReadArgs(Args):
+            read_only = True
+
+        class Changing(FakeMoodle):
+            def call(self, function, **params):
+                result = super().call(function, **params)
+                if function == "export_xml":
+                    self.questions.append(dict(self.questions[0], questionid=999, entryid=999))
+                return result
+
+        runner, output = run(Changing(), ReadArgs)
+        self.assertIn(("FAIL", "read-only: bank counts unchanged"), runner.results, output)
+
     def test_import_that_allows_silent_repeat_fails(self):
         runner, output = run(FakeMoodle(ignore_repeats=True), ImportArgs)
         self.assertIn(("FAIL", "preview_xml: re-preview flags exact_repeat and requires override"), runner.results, output)
@@ -285,6 +321,35 @@ class LiveQbankScriptTest(unittest.TestCase):
         runner, output = run(FakeMoodle(mutate_on_preview=True))
         self.assertIn(("FAIL", "bank unchanged after all previews and negative tests"), runner.results, output)
 
+    def test_missing_or_malformed_preview_tags_fail(self):
+        valid = {"id": 1, "collectionid": 1, "name": "Existing", "isstandard": False}
+        for tags in (None, [valid, valid], [dict(valid, isstandard="0")]):
+            with self.subTest(tags=tags):
+                class BadTags(FakeMoodle):
+                    def preview(self, *args):
+                        result = super().preview(*args)
+                        if tags is None:
+                            del result["tags"]
+                        else:
+                            result["tags"] = tags
+                        return result
+
+                runner, output = run(BadTags())
+                self.assertIn(("FAIL", "preview_xml: export round trip warns about re-import"), runner.results, output)
+
+    def test_missing_tags_are_valid_preview_plans(self):
+        class MissingTags(FakeMoodle):
+            def preview(self, *args):
+                result = super().preview(*args)
+                result["tags"] = [
+                    {"id": 0, "collectionid": 1, "name": "New one", "isstandard": False, "action": "create"},
+                    {"id": 0, "collectionid": 1, "name": "New two", "isstandard": False, "action": "create"},
+                ]
+                return result
+
+        runner, output = run(MissingTags())
+        self.assertIn(("PASS", "preview_xml: export round trip warns about re-import"), runner.results, output)
+
     def test_unknown_category_argument_stops(self):
         class Bad(Args):
             categoryid = 3
@@ -292,9 +357,16 @@ class LiveQbankScriptTest(unittest.TestCase):
         runner, _ = run(FakeMoodle(), Bad)
         self.assertEqual(runner.results[-1], ("FAIL", "--categoryid belongs to --contextid"))
 
-    def test_client_rejects_insecure_url_and_missing_token(self):
+    def test_client_allows_loopback_http_but_rejects_remote_http(self):
+        for url in ("http://localhost", "http://127.0.0.1:8080", "http://[::1]:8080"):
+            with self.subTest(url=url):
+                client = qbank.MoodleClient(url, "token")
+                self.assertEqual(client.base, url)
+        for url in ("http://moodle.example", "http://localhost.example", "http://192.168.1.2"):
+            with self.subTest(url=url), self.assertRaises(qbank.ApiError):
+                qbank.MoodleClient(url, "token")
         with self.assertRaises(qbank.ApiError):
-            qbank.MoodleClient("http://moodle.example", "token")
+            qbank.MoodleClient("ftp://localhost", "token")
         with self.assertRaises(qbank.ApiError):
             qbank.MoodleClient("https://moodle.example", " ")
 

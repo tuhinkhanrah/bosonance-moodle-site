@@ -81,8 +81,14 @@ final class move_test extends \advanced_testcase {
         $this->assert_error('previewstale', fn() => $this->preview($context, $question->id, 1, $target->id));
         $preview = $this->preview($context, $newquestion->id, 2, $target->id);
         $this->assertSame([(int)$question->id, (int)$newquestion->id], array_column($preview['versions'], 'questionid'));
+        foreach ([$question->id, $newquestion->id] as $id) {
+            $this->assertEquals($source->id, \question_bank::load_question_data($id)->category);
+        }
         $result = $this->apply($preview);
         $this->assertCount(2, $result['versions']);
+        foreach ([$question->id, $newquestion->id] as $id) {
+            $this->assertEquals($target->id, \question_bank::load_question_data($id)->category);
+        }
         $this->assertSame((int)$target->id, (int)$DB->get_field('question_bank_entries', 'questioncategoryid',
             ['id' => $version->questionbankentryid]));
     }
